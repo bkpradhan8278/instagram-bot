@@ -4,8 +4,10 @@ import json
 from instagrapi import Client
 
 # ✅ Instagram Credentials
-USERNAME = "bi.pali8278@gmail.com"
-PASSWORD = "Tapu8278@"
+import os
+
+USERNAME = os.getenv("IG_USERNAME")
+PASSWORD = os.getenv("IG_PASSWORD")
 
 # ✅ Initialize Instagram Client
 cl = Client()
