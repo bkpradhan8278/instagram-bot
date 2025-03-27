@@ -2,10 +2,8 @@ import time
 import random
 import json
 from instagrapi import Client
-
-# ✅ Instagram Credentials
 import os
-
+# ✅ Instagram Credentials
 USERNAME = os.getenv("IG_USERNAME")
 PASSWORD = os.getenv("IG_PASSWORD")
 
