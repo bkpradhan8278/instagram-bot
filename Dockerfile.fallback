@@ -1,0 +1,67 @@
+# Dockerfile for Instagram Bot - Render Deployment (Fallback Strategy)
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install Chrome and ChromeDriver with fallback strategy
+RUN apt-get update && apt-get install -y \
+    wget \
+    gnupg \
+    unzip \
+    curl \
+    xvfb \
+    ca-certificates \
+    && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/googlechrome-keyring.gpg \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/googlechrome-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list \
+    && apt-get update \
+    && apt-get install -y google-chrome-stable \
+    && CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+') \
+    && echo "Chrome version: $CHROME_VERSION" \
+    && MAJOR_VERSION=$(echo $CHROME_VERSION | cut -d. -f1) \
+    && echo "Chrome major version: $MAJOR_VERSION" \
+    && ( \
+        # Try specific version first
+        CHROMEDRIVER_URL="https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chromedriver-linux64.zip" \
+        && echo "Trying specific version: $CHROMEDRIVER_URL" \
+        && wget -O /tmp/chromedriver.zip "$CHROMEDRIVER_URL" \
+    ) || ( \
+        # Fallback to latest stable version
+        echo "Specific version failed, trying latest stable..." \
+        && LATEST_VERSION="131.0.6778.85" \
+        && CHROMEDRIVER_URL="https://storage.googleapis.com/chrome-for-testing-public/${LATEST_VERSION}/linux64/chromedriver-linux64.zip" \
+        && echo "Downloading fallback version: $CHROMEDRIVER_URL" \
+        && wget -O /tmp/chromedriver.zip "$CHROMEDRIVER_URL" \
+    ) || ( \
+        # Final fallback to known working version
+        echo "Latest stable failed, using known working version..." \
+        && FALLBACK_VERSION="130.0.6723.116" \
+        && CHROMEDRIVER_URL="https://storage.googleapis.com/chrome-for-testing-public/${FALLBACK_VERSION}/linux64/chromedriver-linux64.zip" \
+        && echo "Downloading known working version: $CHROMEDRIVER_URL" \
+        && wget -O /tmp/chromedriver.zip "$CHROMEDRIVER_URL" \
+    ) \
+    && unzip /tmp/chromedriver.zip -d /tmp/ \
+    && mv /tmp/chromedriver-linux64/chromedriver /usr/bin/chromedriver \
+    && chmod +x /usr/bin/chromedriver \
+    && chromedriver --version \
+    && rm -rf /var/lib/apt/lists/* /tmp/chromedriver.zip /tmp/chromedriver-linux64
+
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application files
+COPY web_automation_bot.py .
+COPY start_bot.py .
+
+# Set environment variables for headless mode
+ENV RENDER_DEPLOYMENT=true
+ENV PYTHONUNBUFFERED=1
+
+# Expose port for health checks
+EXPOSE 8080
+
+# Create a simple health check endpoint
+RUN echo 'from http.server import HTTPServer, BaseHTTPRequestHandler\nimport threading\nclass HealthHandler(BaseHTTPRequestHandler):\n    def do_GET(self):\n        self.send_response(200)\n        self.send_header("Content-type", "text/plain")\n        self.end_headers()\n        self.wfile.write(b"Bot is running")\nserver = HTTPServer(("0.0.0.0", 8080), HealthHandler)\nthread = threading.Thread(target=server.serve_forever, daemon=True)\nthread.start()' > health_server.py
+
+# Start both health server and bot
+CMD python -c "exec(open('health_server.py').read())" & python start_bot.py
