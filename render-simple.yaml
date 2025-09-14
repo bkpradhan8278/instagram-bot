@@ -1,15 +1,15 @@
 services:
   - type: web
-    name: instagram-bot-web-service
+    name: instagram-bot-simple
     env: docker
     plan: free
     region: oregon
-    dockerfilePath: ./Dockerfile
+    dockerfilePath: ./Dockerfile.simple
     envVars:
       - key: INSTAGRAM_USERNAME
-        sync: false  # Set manually in Render dashboard
-      - key: INSTAGRAM_PASSWORD  
-        sync: false  # Set manually in Render dashboard
+        sync: false  # Set manually in dashboard
+      - key: INSTAGRAM_PASSWORD
+        sync: false  # Set manually in dashboard
       - key: RENDER_DEPLOYMENT
         value: true
       - key: PYTHONUNBUFFERED
