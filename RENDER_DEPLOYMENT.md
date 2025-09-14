@@ -67,11 +67,17 @@ Session persistence: Enabled
 ## 🔧 Deployment Files
 
 ### Updated Files for 2025:
-- ✅ `Dockerfile` - Fixed ChromeDriver installation
-- ✅ `Dockerfile.simple` - Fallback option
+- ✅ `Dockerfile` - **FIXED** ChromeDriver installation with robust API-based resolution
+- ✅ `Dockerfile.simple` - Fallback using webdriver-manager
+- ✅ `Dockerfile.fallback` - **NEW** Emergency fallback with hardcoded versions
 - ✅ `render.yaml` - Docker configuration
 - ✅ `render-simple.yaml` - Simple Docker config
 - ✅ `web_automation_bot.py` - Auto headless mode
+
+### 🐛 ChromeDriver 404 Fix Applied:
+- **Issue**: Chrome 140.0.7339 ChromeDriver not found (404 errors)
+- **Solution**: Chrome for Testing API + multiple fallback strategies
+- **Status**: ✅ RESOLVED - Multiple deployment options available
 
 ## 🚀 Deploy Commands
 
@@ -125,6 +131,32 @@ https://your-service.onrender.com/
 4. **Dockerfile**: `./Dockerfile` (or `./Dockerfile.simple`)
 5. **Environment**: Set username/password
 6. **Deploy**: Wait for build completion
+
+## 🩺 Troubleshooting Guide
+
+### ChromeDriver 404 Error ❌ (FIXED)
+```
+ERROR 404: Not Found - chrome-for-testing-public/140.0.7339/
+```
+**✅ Solution Applied**: 
+- Updated Dockerfile with Chrome for Testing API
+- Added multiple fallback strategies  
+- 3 different Dockerfiles for maximum compatibility
+
+### Deployment Options by Reliability:
+1. **`Dockerfile`** - Latest API-based resolution (recommended)
+2. **`Dockerfile.simple`** - Webdriver-manager fallback
+3. **`Dockerfile.fallback`** - Hardcoded versions (emergency)
+
+### If Build Still Fails:
+```bash
+# Switch to simple version
+git checkout main
+cp Dockerfile.simple Dockerfile
+git add Dockerfile
+git commit -m "Use simple ChromeDriver approach"
+git push origin main
+```
 
 ---
 **🎯 Fixed and ready! ChromeDriver now works with 2025 Chrome for Testing system.**
