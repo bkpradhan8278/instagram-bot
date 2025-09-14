@@ -1,0 +1,15 @@
+services:
+  - type: worker
+    name: instagram-bot-24-7
+    env: python
+    plan: free
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: python web_automation_bot.py
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: 1
+      - key: DISPLAY
+        value: :99
+    numInstances: 1
+    autoDeploy: true

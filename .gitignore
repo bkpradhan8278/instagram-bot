@@ -1,0 +1,42 @@
+# Logs
+*.log
+web_automation.log
+ig_bot.log
+scheduler.log
+test_auto_reply.log
+
+# Chrome profile data
+chrome_profile/
+Chrome Profile/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+.venv/
+venv/
+
+# Session data
+session.json
+*.session
+
+# Local environment files
+.env
+.env.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
