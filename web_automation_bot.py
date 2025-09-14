@@ -12,11 +12,11 @@ CURRENT FEATURES:
 - Advanced error handling and recovery systems
 - Safe operation wrappers to prevent crashes
 
-CONSERVATIVE SETTINGS (200 follows/day):
-- MAX_FOLLOWS_PER_CYCLE: 1 (instead of 2)
-- Delays between users: 25-40 seconds (increased from 15-25)
-- Cycle breaks: 4-8 minutes active, 2-4 minutes inactive (doubled)
-- Expected daily follows: ~200 (VERY SAFE)
+FAST SETTINGS (15 followers in 15 minutes):
+- MAX_FOLLOWS_PER_CYCLE: 15 (for quick sessions)
+- Delays between users: 45-75 seconds (1 follower per minute)
+- Cycle breaks: Minimal for 15-minute sessions
+- Expected session follows: 15 in 15 minutes (OPTIMIZED)
 
 REMOVED FEATURES:
 - Auto-reply functionality (removed as requested)
@@ -1324,15 +1324,15 @@ class InstagramWebBot:
                 
                 try:
                     if self.visit_profile(current_target):
-                        followers = self.get_followers_list(max_followers=6)  # Reduced for continuous operation
+                        followers = self.get_followers_list(max_followers=20)  # Increased for fast sessions
                         
                         if followers:
                             for follower in followers:
                                 if follows_this_cycle >= max_follows_per_cycle:
                                     break
                                     
-                                # Reduced engagement probability for continuous operation
-                                if random.random() < 0.5:  # 50% chance
+                                # Increased engagement probability for fast sessions
+                                if random.random() < 0.8:  # 80% chance for fast acquisition
                                     logging.info(f"🔗 Engaging with @{follower}")
                                     
                                     try:
@@ -1346,8 +1346,8 @@ class InstagramWebBot:
                                         likes_this_cycle += post_likes
                                         total_likes += post_likes
                                         
-                                        # Delay between users (Conservative timing for 200/day limit)
-                                        delay = random.uniform(25, 40)  # Increased for safety: 200 follows/day
+                                        # Delay between users (Fast timing for 15 followers in 15 minutes)
+                                        delay = random.uniform(45, 75)  # 45-75 seconds: 1 follower per minute
                                         logging.info(f"⏰ Waiting {delay:.1f} seconds before next user...")
                                         time.sleep(delay)
                                         
@@ -1378,19 +1378,19 @@ class InstagramWebBot:
                 logging.info(f"📊 Cycle Stats: {follows_this_cycle} follows, {likes_this_cycle + home_likes} likes, {reciprocal_count} reciprocal engagements")
                 logging.info(f"📈 Total Stats: {total_follows} follows, {total_likes} likes, {total_reciprocal} reciprocal")
                 
-                # Break between cycles (Conservative timing for 200 follows/day)
+                # Break between cycles (Fast timing for 15-minute sessions)
                 if follows_this_cycle > 0 or reciprocal_count > 0:
-                    break_time = random.uniform(240, 480)  # 4-8 minutes between active cycles (Conservative)
-                    logging.info(f"😴 Taking extended break for {break_time/60:.1f} minutes before next cycle...")
+                    break_time = random.uniform(60, 120)  # 1-2 minutes between active cycles (Fast)
+                    logging.info(f"😴 Taking break for {break_time/60:.1f} minutes before next cycle...")
                 else:
-                    break_time = random.uniform(120, 240)  # 2-4 minutes for inactive cycles
+                    break_time = random.uniform(30, 60)  # 30 seconds-1 minute for inactive cycles
                     logging.info(f"😴 Taking short break for {break_time/60:.1f} minutes before next cycle...")
                 
                 time.sleep(break_time)
                 
                 # Safety check - if too many errors, take longer break
-                if cycle_count % 10 == 0:  # Every 10 cycles
-                    long_break = random.uniform(600, 1200)  # 10-20 minutes
+                if cycle_count % 20 == 0:  # Every 20 cycles
+                    long_break = random.uniform(300, 600)  # 5-10 minutes
                     logging.info(f"🛌 Taking long safety break for {long_break/60:.1f} minutes after {cycle_count} cycles...")
                     time.sleep(long_break)
                 
@@ -1491,8 +1491,8 @@ class InstagramWebBot:
                             logging.info(f"Resting for {delay:.1f} seconds after home engagement...")
                             time.sleep(delay)
                         
-                        # Long delay between users (Conservative for 200/day limit)
-                        delay = random.uniform(30, 50)  # 30-50 seconds (Conservative)
+                        # Long delay between users (Fast for 15 followers in 15 minutes)
+                        delay = random.uniform(45, 75)  # 45-75 seconds (Fast)
                         logging.info(f"Waiting {delay:.1f} seconds before next user...")
                         time.sleep(delay)
                     else:
@@ -1563,10 +1563,10 @@ def main():
         "shreeyasatapathy", 
         "bashu_sanchita"
     ]  # Added new influencers
-    MAX_FOLLOWS_PER_CYCLE = 1  # Conservative: ~200 follows per 24 hours (SAFE)
+    MAX_FOLLOWS_PER_CYCLE = 15  # Fast: 15 followers in 15 minutes
     
     # HEADLESS MODE CONTROL - Change this to True for background/server operation
-    HEADLESS_MODE = True  # Set to True for no display/backend operation
+    HEADLESS_MODE = False  # Set to False for visual debugging
     
     bot = None
     try:
