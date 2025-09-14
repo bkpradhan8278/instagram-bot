@@ -8,8 +8,9 @@ RUN apt-get update && apt-get install -y \
     unzip \
     curl \
     xvfb \
-    && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
-    && echo "deb http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list \
+    ca-certificates \
+    && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/googlechrome-keyring.gpg \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/googlechrome-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list \
     && apt-get update \
     && apt-get install -y google-chrome-stable \
     && rm -rf /var/lib/apt/lists/*
@@ -23,6 +24,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy bot code
 COPY web_automation_bot.py .
+COPY web_service_bot.py .
 
 # Create directory for Chrome profile persistence
 RUN mkdir -p /app/chrome_profile
@@ -30,6 +32,10 @@ RUN mkdir -p /app/chrome_profile
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV DISPLAY=:99
+ENV PORT=10000
 
-# Run the bot
-CMD ["python", "web_automation_bot.py"]
+# Expose port for Render
+EXPOSE 10000
+
+# Run the web service (not the bot directly)
+CMD ["python", "web_service_bot.py"]
