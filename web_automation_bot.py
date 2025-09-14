@@ -1565,8 +1565,8 @@ def main():
     ]  # Added new influencers
     MAX_FOLLOWS_PER_CYCLE = 15  # Fast: 15 followers in 15 minutes
     
-    # HEADLESS MODE CONTROL - Change this to True for background/server operation
-    HEADLESS_MODE = False  # Set to False for visual debugging
+    # HEADLESS MODE CONTROL - True for Render deployment, False for local debugging
+    HEADLESS_MODE = os.environ.get("RENDER_DEPLOYMENT", "false").lower() == "true"
     
     bot = None
     try:
