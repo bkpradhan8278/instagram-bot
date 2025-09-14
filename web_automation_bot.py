@@ -22,11 +22,11 @@ REMOVED FEATURES:
 - Auto-reply functionality (removed as requested)
 - Direct message automation
 
-TARGET ACCOUNTS: lavanya.das_, shreeyasatapathy, bashu_sanchita, udayanonmoney
-CREDENTIALS: bi.pali8278@gmail.com / Bk8278@@
+TARGET ACCOUNTS: lavanya.das_, shreeyasatapathy, bashu_sanchita
+CREDENTIALS: Set via environment variables (INSTAGRAM_USERNAME, INSTAGRAM_PASSWORD)
 
 Run with: python web_automation_bot.py
-Run headless: python headless_bot.py
+Setup: Set environment variables before running
 """
 
 from selenium import webdriver
@@ -1502,9 +1502,17 @@ def main_with_restart():
                 break
 
 def main():
-    # Configuration
-    USERNAME = "bi.pali8278@gmail.com"
-    PASSWORD = "Bk8278@@"
+    # Configuration - Get credentials from environment variables
+    USERNAME = os.environ.get("INSTAGRAM_USERNAME")
+    PASSWORD = os.environ.get("INSTAGRAM_PASSWORD")
+    
+    # Check if credentials are provided
+    if not USERNAME or not PASSWORD:
+        logging.error("❌ Missing credentials! Please set INSTAGRAM_USERNAME and INSTAGRAM_PASSWORD environment variables")
+        logging.error("💡 Example: export INSTAGRAM_USERNAME='your_email@gmail.com'")
+        logging.error("💡 Example: export INSTAGRAM_PASSWORD='your_password'")
+        return
+    
     TARGET_ACCOUNTS = [
         "lavanya.das_",
         "shreeyasatapathy", 

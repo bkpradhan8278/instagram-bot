@@ -5,6 +5,13 @@ ig_bot.log
 scheduler.log
 test_auto_reply.log
 
+# Environment variables and secrets
+.env
+.env.local
+.env.production
+credentials.json
+config.json
+
 # Chrome profile data
 chrome_profile/
 Chrome Profile/

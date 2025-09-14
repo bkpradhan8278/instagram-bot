@@ -11,5 +11,8 @@ services:
         value: 1
       - key: DISPLAY
         value: :99
+      # Add these in Render dashboard:
+      # INSTAGRAM_USERNAME: your_email@gmail.com
+      # INSTAGRAM_PASSWORD: your_password
     numInstances: 1
     autoDeploy: true

@@ -158,6 +158,16 @@ def run_bot():
         bot_stats["status"] = "running"
         bot_stats["start_time"] = time.strftime("%Y-%m-%d %H:%M:%S")
         
+        # Check for environment variables
+        username = os.environ.get("INSTAGRAM_USERNAME")
+        password = os.environ.get("INSTAGRAM_PASSWORD")
+        
+        if not username or not password:
+            logging.error("❌ Missing credentials! Please set INSTAGRAM_USERNAME and INSTAGRAM_PASSWORD environment variables")
+            bot_stats["status"] = "error"
+            bot_running = False
+            return
+        
         # Import and run the main bot function
         main()
         
