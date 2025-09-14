@@ -96,13 +96,58 @@ class InstagramWebBot:
             chrome_options.add_argument("--remote-debugging-port=9222")
             chrome_options.add_argument("--disable-web-security")
             chrome_options.add_argument("--disable-features=VizDisplayCompositor")
+            # Additional Docker stability options
+            chrome_options.add_argument("--single-process")
+            chrome_options.add_argument("--disable-dev-shm-usage")
+            chrome_options.add_argument("--disable-setuid-sandbox")
+            chrome_options.add_argument("--disable-background-networking")
+            chrome_options.add_argument("--disable-default-apps")
+            chrome_options.add_argument("--disable-hang-monitor")
+            chrome_options.add_argument("--disable-popup-blocking")
+            chrome_options.add_argument("--disable-prompt-on-repost")
+            chrome_options.add_argument("--disable-sync")
+            chrome_options.add_argument("--disable-translate")
+            chrome_options.add_argument("--disable-web-resources")
+            chrome_options.add_argument("--memory-pressure-off")
+            chrome_options.add_argument("--max_old_space_size=4096")
             logging.info("🔇 HEADLESS MODE: Running without display (perfect for servers/background)")
         else:
             logging.info("🖥️ VISUAL MODE: Running with browser display")
             
-        # Auto-install and setup ChromeDriver
-        service = Service(ChromeDriverManager().install())
-        self.driver = webdriver.Chrome(service=service, options=chrome_options)
+        # Auto-install and setup ChromeDriver with Docker compatibility
+        try:
+            # Try to use system chromedriver first (for Docker)
+            service = Service("/usr/bin/chromedriver")
+            self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            logging.info("✅ Using system chromedriver")
+        except Exception as e:
+            logging.info(f"System chromedriver not found: {e}")
+            try:
+                # Fallback to webdriver-manager with explicit path fixing
+                driver_path = ChromeDriverManager().install()
+                # Fix the path if it points to wrong file
+                if "THIRD_PARTY_NOTICES" in driver_path:
+                    import os
+                    driver_dir = os.path.dirname(driver_path)
+                    actual_driver = os.path.join(driver_dir, "chromedriver")
+                    if os.path.exists(actual_driver):
+                        driver_path = actual_driver
+                    else:
+                        # Look for chromedriver in subdirectories
+                        for root, dirs, files in os.walk(driver_dir):
+                            for file in files:
+                                if file == "chromedriver":
+                                    driver_path = os.path.join(root, file)
+                                    break
+                            if driver_path.endswith("chromedriver"):
+                                break
+                
+                service = Service(driver_path)
+                self.driver = webdriver.Chrome(service=service, options=chrome_options)
+                logging.info(f"✅ Using webdriver-manager: {driver_path}")
+            except Exception as e2:
+                logging.error(f"❌ ChromeDriver setup failed: {e2}")
+                raise
         
         # Enhanced anti-detection for headless mode
         self.driver.execute_script("""
