@@ -277,13 +277,14 @@ class InstagramWebBot:
                         except:
                             continue
                 
-                # Method 3: Generic button detection
+                # Method 3: Generic button detection (IMPROVED - exclude Facebook login)
                 if not cookie_accepted:
                     try:
                         buttons = self.driver.find_elements(By.TAG_NAME, "button")
                         for button in buttons:
                             button_text = button.text.lower()
-                            if any(word in button_text for word in ['accept', 'allow', 'ok', 'agree']):
+                            # Exclude Facebook login and other non-cookie buttons
+                            if any(word in button_text for word in ['accept', 'allow', 'ok', 'agree']) and not any(exclude in button_text for exclude in ['facebook', 'log in', 'login', 'sign']):
                                 button.click()
                                 logging.info(f"✅ Accepted cookies via generic button: {button_text}")
                                 cookie_accepted = True
@@ -364,19 +365,50 @@ class InstagramWebBot:
             for selector_type, selector in login_selectors:
                 try:
                     login_button = self.driver.find_element(selector_type, selector)
-                    break
+                    # Verify this is actually a login button and not something else
+                    button_text = login_button.text.lower()
+                    if 'log' in button_text and 'facebook' not in button_text:
+                        logging.info(f"Found login button: {login_button.text}")
+                        break
+                    else:
+                        login_button = None
                 except:
                     continue
                     
             if login_button:
-                login_button.click()
+                try:
+                    login_button.click()
+                    logging.info("✅ Clicked login button")
+                except Exception as e:
+                    logging.warning(f"Could not click login button: {e}")
+                    # Fallback: press Enter on password field
+                    password_input.send_keys(Keys.RETURN)
+                    logging.info("⌨️ Used Enter key as fallback")
             else:
                 # Fallback: press Enter on password field
                 password_input.send_keys(Keys.RETURN)
+                logging.info("⌨️ No login button found, using Enter key")
             
-            # Wait for login to complete
+            # Wait for login to complete with timeout
             logging.info("Waiting for login to complete...")
             self.human_delay(8, 12)  # Extended delay for headless mode
+            
+            # Check login status with timeout
+            max_login_attempts = 3
+            for login_attempt in range(max_login_attempts):
+                try:
+                    current_url = self.driver.current_url
+                    if "instagram.com" in current_url and not "accounts/login" in current_url:
+                        logging.info("✅ Login successful - redirected from login page!")
+                        break
+                    elif login_attempt < max_login_attempts - 1:
+                        logging.info(f"Still on login page, waiting... (attempt {login_attempt + 1}/{max_login_attempts})")
+                        self.human_delay(5, 8)
+                    else:
+                        logging.warning("Login process taking longer than expected")
+                except Exception as e:
+                    logging.warning(f"Error checking login status: {e}")
+                    self.human_delay(3, 5)
             
             # Handle "Save Info" dialog
             try:
@@ -409,13 +441,45 @@ class InstagramWebBot:
             except:
                 pass
                 
-            # Verify login success
-            current_url = self.driver.current_url
-            if "instagram.com" in current_url and not "accounts/login" in current_url:
-                logging.info("LOGIN SUCCESSFUL!")
-                return True
-            else:
-                logging.error("Login verification failed - still on login page")
+            # Verify login success with multiple checks
+            try:
+                current_url = self.driver.current_url
+                logging.info(f"Current URL after login: {current_url}")
+                
+                # Check URL-based success
+                if "instagram.com" in current_url and not "accounts/login" in current_url:
+                    logging.info("✅ LOGIN SUCCESSFUL - URL verification passed!")
+                    return True
+                
+                # Check for login indicators even if URL hasn't changed yet
+                login_success_indicators = [
+                    "//a[@aria-label='Home']",
+                    "//svg[@aria-label='Home']",
+                    "//a[contains(@href, '/direct/')]",
+                    "//button[contains(@aria-label, 'New post')]"
+                ]
+                
+                for indicator in login_success_indicators:
+                    if self.driver.find_elements(By.XPATH, indicator):
+                        logging.info("✅ LOGIN SUCCESSFUL - UI elements found!")
+                        return True
+                
+                # If still on login page, check for errors
+                if "accounts/login" in current_url:
+                    # Check for error messages
+                    error_elements = self.driver.find_elements(By.XPATH, "//*[contains(text(), 'incorrect') or contains(text(), 'error') or contains(text(), 'try again')]")
+                    if error_elements:
+                        logging.error(f"❌ Login error detected: {error_elements[0].text}")
+                        return False
+                    else:
+                        logging.error("❌ Login verification failed - still on login page without clear error")
+                        return False
+                else:
+                    logging.info("✅ LOGIN SUCCESSFUL - not on login page anymore!")
+                    return True
+                    
+            except Exception as e:
+                logging.error(f"❌ Error during login verification: {e}")
                 return False
             
         except Exception as e:
