@@ -85,21 +85,25 @@ class InstagramWebBot:
         if headless:
             chrome_options.add_argument("--headless")
             chrome_options.add_argument("--disable-gpu")
-            chrome_options.add_argument("--window-size=1920,1080")
+            chrome_options.add_argument("--window-size=1366,768")  # Reduced from 1920x1080
             chrome_options.add_argument("--disable-software-rasterizer")
             chrome_options.add_argument("--disable-background-timer-throttling")
             chrome_options.add_argument("--disable-backgrounding-occluded-windows")
             chrome_options.add_argument("--disable-renderer-backgrounding")
             chrome_options.add_argument("--disable-features=TranslateUI")
             chrome_options.add_argument("--disable-ipc-flooding-protection")
-            # Render-specific optimizations
-            chrome_options.add_argument("--remote-debugging-port=9222")
+            
+            # Render-specific optimizations for memory constraints
+            chrome_options.add_argument("--memory-pressure-off")
+            chrome_options.add_argument("--max_old_space_size=512")  # Reduced from 4096
+            chrome_options.add_argument("--disable-dev-shm-usage")
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-setuid-sandbox")
+            chrome_options.add_argument("--disable-extensions")
+            chrome_options.add_argument("--disable-plugins")
+            chrome_options.add_argument("--disable-images")  # Disable image loading to save memory
             chrome_options.add_argument("--disable-web-security")
             chrome_options.add_argument("--disable-features=VizDisplayCompositor")
-            # Additional Docker stability options
-            chrome_options.add_argument("--single-process")
-            chrome_options.add_argument("--disable-dev-shm-usage")
-            chrome_options.add_argument("--disable-setuid-sandbox")
             chrome_options.add_argument("--disable-background-networking")
             chrome_options.add_argument("--disable-default-apps")
             chrome_options.add_argument("--disable-hang-monitor")
@@ -108,8 +112,16 @@ class InstagramWebBot:
             chrome_options.add_argument("--disable-sync")
             chrome_options.add_argument("--disable-translate")
             chrome_options.add_argument("--disable-web-resources")
+            chrome_options.add_argument("--single-process")  # Use single process to reduce memory
+            chrome_options.add_argument("--no-first-run")
+            chrome_options.add_argument("--no-default-browser-check")
+            chrome_options.add_argument("--disable-default-apps")
+            chrome_options.add_argument("--disable-component-update")
+            
+            # Additional memory optimization
+            chrome_options.add_argument("--aggressive-cache-discard")
             chrome_options.add_argument("--memory-pressure-off")
-            chrome_options.add_argument("--max_old_space_size=4096")
+            
             logging.info("🔇 HEADLESS MODE: Running without display (perfect for servers/background)")
         else:
             logging.info("🖥️ VISUAL MODE: Running with browser display")
@@ -149,13 +161,16 @@ class InstagramWebBot:
                 logging.error(f"❌ ChromeDriver setup failed: {e2}")
                 raise
         
-        # Enhanced anti-detection for headless mode
-        self.driver.execute_script("""
-            Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
-            Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
-            Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']});
-            window.chrome = {runtime: {}};
-        """)
+        # Enhanced anti-detection for headless mode with error handling
+        try:
+            self.driver.execute_script("""
+                Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+                Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
+                Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']});
+                window.chrome = {runtime: {}};
+            """)
+        except Exception as e:
+            logging.warning(f"Could not execute anti-detection script: {e}")
         
         self.wait = WebDriverWait(self.driver, 20)  # Increased timeout for headless
         
@@ -1306,31 +1321,86 @@ class InstagramWebBot:
             logging.error(f"❌ Connection check failed: {e}")
             return False
             
+    def is_browser_alive(self):
+        """Check if the browser is still alive and responsive"""
+        try:
+            # Try a simple operation to check if browser is responsive
+            self.driver.current_url
+            return True
+        except Exception as e:
+            error_msg = str(e).lower()
+            if any(term in error_msg for term in ['invalid session', 'session deleted', 'disconnected', 'connection']):
+                logging.error(f"🔥 Browser crashed or disconnected: {e}")
+                return False
+            else:
+                logging.warning(f"Browser check failed but might be recoverable: {e}")
+                return True
+    
+    def restart_browser_if_needed(self, headless=False):
+        """Restart the browser if it has crashed"""
+        try:
+            if not self.is_browser_alive():
+                logging.info("🔄 Restarting browser after crash...")
+                if self.driver:
+                    try:
+                        self.driver.quit()
+                    except:
+                        pass
+                
+                # Wait a moment before restart
+                time.sleep(5)
+                
+                # Setup driver again
+                self.setup_driver(headless)
+                logging.info("✅ Browser restarted successfully")
+                return True
+            return False
+        except Exception as e:
+            logging.error(f"❌ Failed to restart browser: {e}")
+            return False
+            
     def safe_operation(self, operation_func, operation_name, *args, **kwargs):
         """Safely execute an operation with error handling and restart capability"""
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                # Check connection before operation
-                if not self.check_connection_and_restart_if_needed():
-                    logging.warning(f"🔄 Connection issue detected, attempting to refresh...")
-                    self.driver.refresh()
-                    self.human_delay(5, 8)
-                    
+                # Check if browser is alive before operation
+                if not self.is_browser_alive():
+                    logging.warning(f"🔄 Browser not responding, restarting...")
+                    headless = os.environ.get("RENDER_DEPLOYMENT", "false").lower() == "true"
+                    if self.restart_browser_if_needed(headless):
+                        # Re-login after restart
+                        if not self.login():
+                            logging.error("❌ Could not login after browser restart")
+                            continue
+                
                 # Execute the operation
                 return operation_func(*args, **kwargs)
                 
             except Exception as e:
-                logging.warning(f"⚠️ {operation_name} failed (attempt {attempt + 1}/{max_retries}): {e}")
-                if attempt < max_retries - 1:
-                    # Wait before retry
-                    wait_time = (attempt + 1) * 30  # 30, 60, 90 seconds
-                    logging.info(f"⏰ Waiting {wait_time} seconds before retry...")
-                    time.sleep(wait_time)
+                error_msg = str(e).lower()
+                if any(term in error_msg for term in ['invalid session', 'session deleted', 'disconnected']):
+                    logging.warning(f"🔥 Browser crash detected during {operation_name}: {e}")
+                    headless = os.environ.get("RENDER_DEPLOYMENT", "false").lower() == "true"
+                    if self.restart_browser_if_needed(headless):
+                        # Re-login after restart
+                        if not self.login():
+                            logging.error("❌ Could not login after browser restart")
+                            continue
+                    else:
+                        logging.error(f"❌ Could not restart browser after crash")
+                        break
                 else:
-                    logging.error(f"❌ {operation_name} failed after {max_retries} attempts")
-                    return None
-                    
+                    logging.warning(f"⚠️ {operation_name} failed (attempt {attempt + 1}/{max_retries}): {e}")
+                    if attempt < max_retries - 1:
+                        # Wait before retry
+                        wait_time = (attempt + 1) * 30  # 30, 60, 90 seconds
+                        logging.info(f"⏰ Waiting {wait_time} seconds before retry...")
+                        time.sleep(wait_time)
+                    else:
+                        logging.error(f"❌ {operation_name} failed after {max_retries} attempts")
+                        return None
+                        
         return None
         
     def run_continuous_campaign(self, target_accounts, max_follows_per_cycle=3):
@@ -1585,7 +1655,7 @@ class InstagramWebBot:
 def main_with_restart():
     """Main function with automatic restart capability"""
     restart_count = 0
-    max_restarts = 5  # Maximum number of restarts per day
+    max_restarts = 10  # Increased for handling Chrome crashes
     
     while restart_count < max_restarts:
         try:
@@ -1600,10 +1670,17 @@ def main_with_restart():
             
         except Exception as e:
             restart_count += 1
-            logging.error(f"💥 Bot crashed: {e}")
+            error_msg = str(e).lower()
+            
+            # Check if it's a browser crash
+            if any(term in error_msg for term in ['invalid session', 'session deleted', 'disconnected', 'chrome']):
+                logging.error(f"� Browser crash detected: {e}")
+                wait_time = 30  # Quick restart for browser crashes
+            else:
+                logging.error(f"💥 Bot crashed: {e}")
+                wait_time = restart_count * 60  # Progressive delay for other errors
             
             if restart_count < max_restarts:
-                wait_time = restart_count * 300  # 5, 10, 15, 20, 25 minutes
                 logging.info(f"🔄 Restarting in {wait_time//60} minutes... (Restart {restart_count}/{max_restarts})")
                 time.sleep(wait_time)
             else:
